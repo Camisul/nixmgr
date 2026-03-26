@@ -1,0 +1,18 @@
+{
+  description = "NixOS fleet managed by nixmgr";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
+  outputs = { self, nixpkgs, disko, ... }: {
+    nixosConfigurations = {
+      # <nixmgr:hosts>
+    };
+  };
+}

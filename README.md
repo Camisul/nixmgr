@@ -91,31 +91,6 @@ Preview what would happen without making any changes:
 nixmgr add --dry-run 203.0.113.10
 ```
 
-## Project structure
-
-```
-.
-├── main.go                     # Entrypoint
-├── cmd/
-│   ├── root.go                 # Root cobra command
-│   └── add.go                  # add subcommand
-├── internal/
-│   ├── config/
-│   │   └── config.go           # nixmgr.toml loading and name picking
-│   ├── cloudflare/
-│   │   └── dns.go              # Cloudflare API client
-│   └── nix/
-│       ├── scaffold.go         # Host scaffolding and flake injection
-│       └── scaffold_test.go    # Tests
-├── modules/
-│   ├── base.nix                # Shared NixOS config (SSH, GRUB, packages)
-│   └── disk-config.nix         # Disko partitioning (GPT + LVM + ext4)
-├── hosts/                      # Per-host configurations (generated)
-├── flake.nix                   # Nix flake with disko input
-├── nixmgr.toml                 # Tool configuration
-└── go.mod
-```
-
 ## Nix modules
 
 ### `modules/base.nix`

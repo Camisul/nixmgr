@@ -1,0 +1,24 @@
+# nixmgr configuration
+
+# The domain under which host subdomains are created.
+# e.g., name "zeus" with domain "infra.example.com" creates zeus.infra.example.com
+domain = "{{.Domain}}"
+
+# Pool of host names. They are assigned in order — the first unused name is picked.
+names = [
+  "zeus",
+  "athena",
+  "hermes",
+  "apollo",
+  "artemis",
+  "hades",
+  "poseidon",
+  "hera",
+  "ares",
+  "demeter",
+  "hephaestus",
+  "dionysus",
+  "persephone",
+  "aphrodite",
+  "helios",
+]
