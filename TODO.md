@@ -1,3 +1,3 @@
-- [] sops-nix integration
+- [x] sops-nix integration
 - [x] add should run nixos-anywhere
 - [] find allready defined ssh keys and autolink

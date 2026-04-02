@@ -6,7 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
+	agessh "github.com/Mic92/ssh-to-age"
 	//"github.com/soyboy/nixmgr/internal/cloudflare"
 	"github.com/soyboy/nixmgr/internal/config"
 	"github.com/soyboy/nixmgr/internal/nix"
@@ -67,6 +69,11 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		fmt.Println("[dry-run] Would create DNS record:", fqdn, "->", ip)
 		fmt.Printf("[dry-run] Would scaffold hosts/%s/configuration.nix\n", name)
 		fmt.Printf("[dry-run] Would add nixosConfigurations.%s to flake.nix\n", name)
+		if cfg.Sops.Enabled {
+			fmt.Println("[dry-run] Would enable sops-nix integration for this host")
+			fmt.Printf("[dry-run] Would fetch machine age key via ssh root@%s cat /etc/ssh/ssh_host_ed25519_key.pub\n", ip)
+			fmt.Println("[dry-run] Would update .sops.yaml machine keys")
+		}
 		if runInstall {
 			fmt.Printf("[dry-run] Would run: nixos-anywhere --flake .#%s root@%s\n", name, ip)
 		}
@@ -86,7 +93,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 
 	// Step 2: Scaffold host configuration
 	fmt.Printf("Scaffolding hosts/%s/configuration.nix ... ", name)
-	if err := nix.ScaffoldHost(hostsDir, name); err != nil {
+	if err := nix.ScaffoldHost(hostsDir, name, cfg.Sops.Enabled); err != nil {
 		return fmt.Errorf("scaffold: %w", err)
 	}
 	fmt.Println("done")
@@ -94,7 +101,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	// Step 3: Add flake output
 	flakePath := filepath.Join(root, "flake.nix")
 	fmt.Printf("Adding flake output nixosConfigurations.%s ... ", name)
-	if err := nix.AddFlakeOutput(flakePath, name); err != nil {
+	if err := nix.AddFlakeOutput(flakePath, name, cfg.Sops.Enabled); err != nil {
 		return fmt.Errorf("flake: %w", err)
 	}
 	fmt.Println("done")
@@ -109,6 +116,22 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		if err := nixosCmd.Run(); err != nil {
 			return fmt.Errorf("running nixos-anywhere: %w", err)
 		}
+	}
+
+	if cfg.Sops.Enabled {
+		fmt.Printf("Fetching machine age identity from root@%s ... ", ip)
+		machineAge, err := fetchMachineAgeIdentity(ip)
+		if err != nil {
+			return fmt.Errorf("fetching machine age identity: %w", err)
+		}
+		fmt.Println("done")
+
+		sopsPath := filepath.Join(root, ".sops.yaml")
+		fmt.Print("Updating .sops.yaml machine keys ... ")
+		if err := nix.UpdateSopsMachineKeys(sopsPath, name, machineAge); err != nil {
+			return fmt.Errorf("sops: %w", err)
+		}
+		fmt.Println("done")
 	}
 
 	fmt.Println()
@@ -144,4 +167,30 @@ func findProjectRoot() (string, error) {
 		}
 		dir = parent
 	}
+}
+
+func fetchMachineAgeIdentity(ip string) (string, error) {
+	sshCmd := exec.Command(
+		"ssh",
+		"-o", "StrictHostKeyChecking=accept-new",
+		fmt.Sprintf("root@%s", ip),
+		"cat", "/etc/ssh/ssh_host_ed25519_key.pub",
+	)
+
+	pubKey, err := sshCmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("ssh host key fetch failed: %w", err)
+	}
+
+	ageRecipient, err := agessh.SSHPublicKeyToAge(pubKey)
+	if err != nil {
+		return "", fmt.Errorf("ssh-to-age conversion failed: %w", err)
+	}
+
+	age := strings.TrimSpace(*ageRecipient)
+	if age == "" {
+		return "", fmt.Errorf("ssh-to-age returned empty recipient")
+	}
+
+	return age, nil
 }

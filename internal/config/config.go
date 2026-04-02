@@ -8,8 +8,13 @@ import (
 )
 
 type Config struct {
-	Domain string   `toml:"domain"`
-	Names  []string `toml:"names"`
+	Domain string     `toml:"domain"`
+	Names  []string   `toml:"names"`
+	Sops   SopsConfig `toml:"sops"`
+}
+
+type SopsConfig struct {
+	Enabled bool `toml:"enabled"`
 }
 
 func Load(path string) (*Config, error) {

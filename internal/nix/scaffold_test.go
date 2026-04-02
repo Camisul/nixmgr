@@ -11,7 +11,7 @@ func TestScaffoldHost(t *testing.T) {
 	dir := t.TempDir()
 	hostsDir := filepath.Join(dir, "hosts")
 
-	if err := ScaffoldHost(hostsDir, "zeus"); err != nil {
+	if err := ScaffoldHost(hostsDir, "zeus", false); err != nil {
 		t.Fatalf("ScaffoldHost: %v", err)
 	}
 
@@ -22,11 +22,11 @@ func TestScaffoldHost(t *testing.T) {
 	}
 
 	content := string(data)
-	if !strings.Contains(content, `networking.hostName = "zeus"`) {
-		t.Errorf("expected hostname in config, got:\n%s", content)
+	if !strings.Contains(content, `./disk-config.nix`) {
+		t.Errorf("expected disk-config import, got:\n%s", content)
 	}
-	if !strings.Contains(content, "../../modules/base.nix") {
-		t.Errorf("expected base.nix import, got:\n%s", content)
+	if !strings.Contains(content, `services.openssh.enable = true;`) {
+		t.Errorf("expected openssh config, got:\n%s", content)
 	}
 }
 
@@ -46,7 +46,7 @@ func TestAddFlakeOutput(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := AddFlakeOutput(flakePath, "zeus"); err != nil {
+	if err := AddFlakeOutput(flakePath, "zeus", false); err != nil {
 		t.Fatalf("AddFlakeOutput(zeus): %v", err)
 	}
 
@@ -64,7 +64,7 @@ func TestAddFlakeOutput(t *testing.T) {
 	}
 
 	// Add a second host
-	if err := AddFlakeOutput(flakePath, "athena"); err != nil {
+	if err := AddFlakeOutput(flakePath, "athena", false); err != nil {
 		t.Fatalf("AddFlakeOutput(athena): %v", err)
 	}
 
@@ -162,7 +162,7 @@ func TestInitProjectFlakeCompatibleWithAddFlakeOutput(t *testing.T) {
 
 	// The generated flake.nix should be compatible with AddFlakeOutput
 	flakePath := filepath.Join(dir, "flake.nix")
-	if err := AddFlakeOutput(flakePath, "zeus"); err != nil {
+	if err := AddFlakeOutput(flakePath, "zeus", false); err != nil {
 		t.Fatalf("AddFlakeOutput after init: %v", err)
 	}
 
@@ -176,5 +176,123 @@ func TestInitProjectFlakeCompatibleWithAddFlakeOutput(t *testing.T) {
 	}
 	if !strings.Contains(content, "# <nixmgr:hosts>") {
 		t.Errorf("marker should be preserved, got:\n%s", content)
+	}
+}
+
+func TestScaffoldHostWithSops(t *testing.T) {
+	dir := t.TempDir()
+	hostsDir := filepath.Join(dir, "hosts")
+
+	if err := ScaffoldHost(hostsDir, "zeus", true); err != nil {
+		t.Fatalf("ScaffoldHost: %v", err)
+	}
+
+	configPath := filepath.Join(hostsDir, "zeus", "configuration.nix")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("reading config: %v", err)
+	}
+
+	content := string(data)
+	if !strings.Contains(content, `sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];`) {
+		t.Errorf("expected sops integration in config, got:\n%s", content)
+	}
+}
+
+func TestAddFlakeOutputWithSops(t *testing.T) {
+	dir := t.TempDir()
+	flakePath := filepath.Join(dir, "flake.nix")
+
+	initial := `{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
+  outputs = { self, nixpkgs, disko, ... }: {
+    nixosConfigurations = {
+      # <nixmgr:hosts>
+    };
+  };
+}
+`
+	if err := os.WriteFile(flakePath, []byte(initial), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := AddFlakeOutput(flakePath, "zeus", true); err != nil {
+		t.Fatalf("AddFlakeOutput(zeus): %v", err)
+	}
+
+	data, err := os.ReadFile(flakePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	content := string(data)
+	if !strings.Contains(content, `sops-nix = {`) {
+		t.Errorf("expected sops-nix input, got:\n%s", content)
+	}
+	if !strings.Contains(content, `outputs = { self, nixpkgs, disko, sops-nix, ... }:`) {
+		t.Errorf("expected sops-nix in outputs args, got:\n%s", content)
+	}
+	if !strings.Contains(content, `sops-nix.nixosModules.sops`) {
+		t.Errorf("expected sops module in host entry, got:\n%s", content)
+	}
+}
+
+func TestUpdateSopsMachineKeysCreatesFile(t *testing.T) {
+	dir := t.TempDir()
+	sopsPath := filepath.Join(dir, ".sops.yaml")
+
+	if err := UpdateSopsMachineKeys(sopsPath, "zeus", "age1zeusmachinekey"); err != nil {
+		t.Fatalf("UpdateSopsMachineKeys: %v", err)
+	}
+
+	data, err := os.ReadFile(sopsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "# <nixmgr:machine-keys>") {
+		t.Errorf("expected machine key marker, got:\n%s", content)
+	}
+	if !strings.Contains(content, "# nixmgr:zeus") {
+		t.Errorf("expected zeus machine key entry, got:\n%s", content)
+	}
+}
+
+func TestUpdateSopsMachineKeysAppendsToMarker(t *testing.T) {
+	dir := t.TempDir()
+	sopsPath := filepath.Join(dir, ".sops.yaml")
+
+	initial := `keys:
+  - &admin age1example
+
+creation_rules:
+  - path_regex: secrets/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+      - age:
+          - *admin
+          # <nixmgr:machine-keys>
+`
+	if err := os.WriteFile(sopsPath, []byte(initial), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := UpdateSopsMachineKeys(sopsPath, "athena", "age1athenamachinekey"); err != nil {
+		t.Fatalf("UpdateSopsMachineKeys: %v", err)
+	}
+
+	data, err := os.ReadFile(sopsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "# nixmgr:athena") {
+		t.Errorf("expected athena machine key entry, got:\n%s", content)
 	}
 }

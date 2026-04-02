@@ -50,6 +50,9 @@ names = [
   "apollo",
   "artemis",
 ]
+
+[sops]
+enabled = false
 ```
 
 Set the required environment variables:
@@ -58,6 +61,14 @@ Set the required environment variables:
 export CLOUDFLARE_API_TOKEN="your-api-token"
 export CLOUDFLARE_ZONE_ID="your-zone-id"
 ```
+
+Enable `sops.enabled = true` if you want newly added hosts to be scaffolded with
+sops-nix integration. When enabled, `nixmgr add` fetches the machine age identity
+from `root@<ip>` by reading `/etc/ssh/ssh_host_ed25519_key.pub` and converting it
+with the Go `ssh-to-age` library
+and updates `.sops.yaml` (or creates it if missing).
+If you maintain `.sops.yaml` manually, keep `# <nixmgr:machine-keys>` under your
+`age` recipient list so new host keys can be appended automatically.
 
 ## Usage
 
