@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	//"github.com/soyboy/nixmgr/internal/cloudflare"
@@ -13,6 +14,7 @@ import (
 )
 
 var dryRun bool
+var runInstall bool
 
 var addCmd = &cobra.Command{
 	Use:   "add <ip-address>",
@@ -28,6 +30,7 @@ var addCmd = &cobra.Command{
 
 func init() {
 	addCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Print what would be done without making any changes")
+	addCmd.Flags().BoolVar(&runInstall, "run", false, "Run nixos-anywhere after scaffolding and flake update")
 	rootCmd.AddCommand(addCmd)
 }
 
@@ -64,18 +67,21 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		fmt.Println("[dry-run] Would create DNS record:", fqdn, "->", ip)
 		fmt.Printf("[dry-run] Would scaffold hosts/%s/configuration.nix\n", name)
 		fmt.Printf("[dry-run] Would add nixosConfigurations.%s to flake.nix\n", name)
+		if runInstall {
+			fmt.Printf("[dry-run] Would run: nixos-anywhere --flake .#%s root@%s\n", name, ip)
+		}
 		return nil
 	}
 
 	// Step 1: Cloudflare DNS
 	fmt.Printf("Creating DNS record %s -> %s ... ", fqdn, ip)
-//	cf, err := cloudflare.NewClient()
-//	if err != nil {
-//		return err
-//	}
-//	if err := cf.CreateARecord(name, cfg.Domain, ip); err != nil {
-//		return fmt.Errorf("cloudflare: %w", err)
-//	}
+	//	cf, err := cloudflare.NewClient()
+	//	if err != nil {
+	//		return err
+	//	}
+	//	if err := cf.CreateARecord(name, cfg.Domain, ip); err != nil {
+	//		return fmt.Errorf("cloudflare: %w", err)
+	//	}
 	fmt.Println("done")
 
 	// Step 2: Scaffold host configuration
@@ -93,12 +99,30 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println("done")
 
+	if runInstall {
+		fmt.Printf("Running nixos-anywhere for %s ...\n", name)
+		nixosCmd := exec.Command("nixos-anywhere", "--flake", fmt.Sprintf(".#%s", name), fmt.Sprintf("root@%s", ip))
+		nixosCmd.Dir = root
+		nixosCmd.Stdout = os.Stdout
+		nixosCmd.Stderr = os.Stderr
+		nixosCmd.Stdin = os.Stdin
+		if err := nixosCmd.Run(); err != nil {
+			return fmt.Errorf("running nixos-anywhere: %w", err)
+		}
+	}
+
 	fmt.Println()
 	fmt.Printf("Host '%s' added successfully.\n", name)
 	fmt.Println()
-	fmt.Println("Next steps:")
-	fmt.Printf("  1. Edit hosts/%s/configuration.nix to customize the host\n", name)
-	fmt.Printf("  2. Deploy with: nixos-anywhere --flake .#%s root@%s\n", name, ip)
+	if runInstall {
+		fmt.Println("nixos-anywhere completed successfully.")
+		fmt.Println("Next steps:")
+		fmt.Printf("  1. Edit hosts/%s/configuration.nix to customize the host\n", name)
+	} else {
+		fmt.Println("Next steps:")
+		fmt.Printf("  1. Edit hosts/%s/configuration.nix to customize the host\n", name)
+		fmt.Printf("  2. Deploy with: nixos-anywhere --flake .#%s root@%s\n", name, ip)
+	}
 
 	return nil
 }

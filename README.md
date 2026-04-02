@@ -91,6 +91,14 @@ Preview what would happen without making any changes:
 nixmgr add --dry-run 203.0.113.10
 ```
 
+### Add and deploy immediately
+
+Run `nixos-anywhere` automatically after scaffolding and flake updates:
+
+```sh
+nixmgr add --run 203.0.113.10
+```
+
 ## Nix modules
 
 ### `modules/base.nix`
