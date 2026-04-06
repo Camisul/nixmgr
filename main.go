@@ -3,7 +3,7 @@ package main
 import "github.com/camisul/nixmgr/cmd"
 
 const (
-	Version = "v0.1.0"
+	Version = "v0.2.0"
 )
 
 func main() {
