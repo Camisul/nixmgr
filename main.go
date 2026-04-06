@@ -1,6 +1,6 @@
 package main
 
-import "github.com/soyboy/nixmgr/cmd"
+import "github.com/camisul/nixmgr/cmd"
 
 func main() {
 	cmd.Execute()

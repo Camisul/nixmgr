@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/soyboy/nixmgr/internal/nix"
+	"github.com/camisul/nixmgr/internal/nix"
 	"github.com/spf13/cobra"
 )
 

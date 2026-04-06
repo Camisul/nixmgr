@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	agessh "github.com/Mic92/ssh-to-age"
-	//"github.com/soyboy/nixmgr/internal/cloudflare"
-	"github.com/soyboy/nixmgr/internal/config"
-	"github.com/soyboy/nixmgr/internal/nix"
+	//"github.com/camisul/nixmgr/internal/cloudflare"
+	"github.com/camisul/nixmgr/internal/config"
+	"github.com/camisul/nixmgr/internal/nix"
 	"github.com/spf13/cobra"
 )
 

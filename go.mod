@@ -1,4 +1,4 @@
-module github.com/soyboy/nixmgr
+module github.com/camisul/nixmgr
 
 go 1.24.0
 
