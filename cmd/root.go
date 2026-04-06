@@ -12,6 +12,10 @@ var rootCmd = &cobra.Command{
 	Short: "Manage NixOS hosts with flakes and Cloudflare DNS",
 }
 
+func SetVersion(version string) {
+	rootCmd.Version = version
+}
+
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

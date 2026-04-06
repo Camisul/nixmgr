@@ -21,7 +21,7 @@
       pkgsFor = system: nixpkgs.legacyPackages.${system};
       pname = "nixmgr";
       owner = "camisul";
-      version = "0.1.0";
+      version = "v0.1.0";
     in
     {
       packages = forAllSystems (
