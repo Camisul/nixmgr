@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	agessh "github.com/Mic92/ssh-to-age"
-	//"github.com/camisul/nixmgr/internal/cloudflare"
+	"github.com/camisul/nixmgr/internal/cloudflare"
 	"github.com/camisul/nixmgr/internal/config"
 	"github.com/camisul/nixmgr/internal/nix"
 	"github.com/spf13/cobra"
@@ -82,13 +82,13 @@ func runAdd(cmd *cobra.Command, args []string) error {
 
 	// Step 1: Cloudflare DNS
 	fmt.Printf("Creating DNS record %s -> %s ... ", fqdn, ip)
-	//	cf, err := cloudflare.NewClient()
-	//	if err != nil {
-	//		return err
-	//	}
-	//	if err := cf.CreateARecord(name, cfg.Domain, ip); err != nil {
-	//		return fmt.Errorf("cloudflare: %w", err)
-	//	}
+	cf, err := cloudflare.NewClient()
+	if err != nil {
+		return err
+	}
+	if err := cf.CreateARecord(name, cfg.Domain, ip); err != nil {
+		return fmt.Errorf("cloudflare: %w", err)
+	}
 	fmt.Println("done")
 
 	// Step 2: Scaffold host configuration
