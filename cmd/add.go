@@ -76,13 +76,14 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		fmt.Println("[dry-run] Would create DNS record:", fqdn, "->", ip)
 		fmt.Printf("[dry-run] Would scaffold hosts/%s/configuration.nix\n", name)
 		fmt.Printf("[dry-run] Would add nixosConfigurations.%s to flake.nix\n", name)
+		if runInstall {
+			fmt.Printf("[dry-run] Would run: nixos-anywhere %s", strings.Join(anywhereArgs, " "))
+		}
+
 		if cfg.Sops.Enabled {
 			fmt.Println("[dry-run] Would enable sops-nix integration for this host")
 			fmt.Printf("[dry-run] Would fetch machine age key via ssh root@%s cat /etc/ssh/ssh_host_ed25519_key.pub\n", ip)
 			fmt.Println("[dry-run] Would update .sops.yaml machine keys")
-		}
-		if runInstall {
-			fmt.Printf("[dry-run] Would run: nixos-anywhere %s", strings.Join(anywhereArgs, " "))
 		}
 		return nil
 	}
