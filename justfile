@@ -1,3 +1,9 @@
+build:
+    go build .
+
+install: build
+    cp ./nixmgr ~/.local/bin/
+    
 
 _git_is_dirty:
         @git diff-index --quiet --cached HEAD --
