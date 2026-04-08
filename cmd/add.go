@@ -65,6 +65,13 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	fmt.Printf("IP:            %s\n", ip)
 	fmt.Println()
 
+	anywhereArgs := []string{
+		"--flake", fmt.Sprintf(".#%s", name),
+		"--generate-hardware-config", "nixos-generate-config", filepath.Join(hostsDir, name, "hardware-configuration.nix"),
+		"--target-host", fmt.Sprintf("root@%s", ip),
+		"--build-on-remote",
+	}
+
 	if dryRun {
 		fmt.Println("[dry-run] Would create DNS record:", fqdn, "->", ip)
 		fmt.Printf("[dry-run] Would scaffold hosts/%s/configuration.nix\n", name)
@@ -75,7 +82,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 			fmt.Println("[dry-run] Would update .sops.yaml machine keys")
 		}
 		if runInstall {
-			fmt.Printf("[dry-run] Would run: nixos-anywhere --flake .#%s root@%s\n", name, ip)
+			fmt.Printf("[dry-run] Would run: nixos-anywhere %s", strings.Join(anywhereArgs, " "))
 		}
 		return nil
 	}
@@ -108,7 +115,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 
 	if runInstall {
 		fmt.Printf("Running nixos-anywhere for %s ...\n", name)
-		nixosCmd := exec.Command("nixos-anywhere", "--flake", fmt.Sprintf(".#%s", name), fmt.Sprintf("root@%s", ip))
+		nixosCmd := exec.Command("nixos-anywhere", anywhereArgs...)
 		nixosCmd.Dir = root
 		nixosCmd.Stdout = os.Stdout
 		nixosCmd.Stderr = os.Stderr
