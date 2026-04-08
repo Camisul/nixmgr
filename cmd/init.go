@@ -56,21 +56,35 @@ func runInit(cmd *cobra.Command, args []string) error {
 	fmt.Println("  created nixmgr.toml")
 	fmt.Println("  created hosts/")
 
-	// Git init if needed
-	gitDir := filepath.Join(cwd, ".git")
-	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
-		fmt.Println()
-		fmt.Print("Initializing git repository ... ")
-		if err := exec.Command("git", "init").Run(); err != nil {
-			return fmt.Errorf("git init: %w", err)
-		}
-		fmt.Println("done")
+	if err = initGit(cwd); err != nil {
+		return err
 	}
 
 	fmt.Println()
 	fmt.Println("Project initialized. Next steps:")
 	fmt.Printf("  1. Edit nixmgr.toml to set your domain (currently %q)\n", initDomain)
 	fmt.Println("  2. Add hosts with: nixmgr add <ip-address>")
+
+	return nil
+}
+
+func initGit(cwd string) error {
+
+	// Git init if needed
+	gitDir := filepath.Join(cwd, ".git")
+
+	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
+		if err := exec.Command("git", "rev-parse", "--is-inside-work-tree").Run(); err == nil {
+			return nil
+		}
+	}
+
+	fmt.Println()
+	fmt.Print("Initializing git repository ... ")
+	if err := exec.Command("git", "init").Run(); err != nil {
+		return fmt.Errorf("git init: %w", err)
+	}
+	fmt.Println("done")
 
 	return nil
 }
